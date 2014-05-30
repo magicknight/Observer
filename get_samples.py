@@ -47,4 +47,4 @@ def get_samples(sample_path, dim_x, dim_z, orientations, pixels_per_cell, cells_
                         label.append(1)
                     else:
                         label.append(0)
-    return sample, label
+    return np.array(sample), np.array(label)
