@@ -23,9 +23,13 @@ pixels_per_cell = (4, 4)
 cells_per_block = (1, 1) # not ready to change this value
 scan_window_size = (9, 9) #on pixels
 svm_file = 'svm.pkl'
+out_file = 'result.txt'
 training_path = '/home/zhihua/work/HOG/image/training'
-test_path = '/home/zhihua/work/HOG/image/small_test'
+test_path = '/home/zhihua/work/HOG/image/tiny_test'
 
+#########################################################
+# training
+#########################################################
 #load SVM if there exist trained SVM file.
 if os.path.isfile(svm_file):
     with open(svm_file, 'rb') as fid:
@@ -33,7 +37,7 @@ if os.path.isfile(svm_file):
 #if no svm file exist, train it
 else:
     #training samples and labels
-    training_sample, training_label = get_samples(training_path, dim_x, dim_z, orientations, pixels_per_cell,
+    training_sample, training_label, dummy = get_samples(training_path, dim_x, dim_z, orientations, pixels_per_cell,
                                                   cells_per_block, scan_window_size)
     print 'Training set contains', len(training_label), 'samples'
     # training SVM and dump the trained svm to a binary file
@@ -42,8 +46,25 @@ else:
     with open(svm_file, 'wb') as fid:
         pickle.dump(clf, fid)
 
+#########################################################
+# test
+#########################################################
 #get the samples from test folder.
-test_sample, test_label = get_samples(test_path, dim_x, dim_z, orientations, pixels_per_cell,
-                                      cells_per_block, scan_window_size)
+test_sample, test_label, lesion_positions = get_samples(test_path, dim_x, dim_z, orientations, pixels_per_cell,
+                                                        cells_per_block, scan_window_size)
+print 'Test set contains', len(test_label), 'samples'
 predict_label = clf.predict(test_sample)
-print 'Percentage error is:', np.mean(predict_label != test_label)
+print 'Prediction-percentage-error is:', np.mean(predict_label != test_label)
+#go back to the original image axis
+label_x = dim_x/pixels_per_cell[0] - scan_window_size[0]
+label_y = dim_z/pixels_per_cell[1] - scan_window_size[1]
+n_samples = len(lesion_positions)
+predict_label = predict_label.reshape([n_samples, label_y, label_x])
+with open(out_file, 'w') as fid:
+    for i in range(n_samples):
+        fid.write('=============== ' + 'Image ' + str(i) + ' =============== \n')
+        y, x = np.where(predict_label[:, :, i] == 1)
+        predict_lesion_position = np.dstack((y*pixels_per_cell[1], x*pixels_per_cell[0]))
+        fid.write(str(lesion_positions[i]) + '\n')
+        fid.write('--------------- \n')
+        fid.write(str(predict_lesion_position) + '\n')

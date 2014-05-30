@@ -10,7 +10,6 @@ import numpy as np
 from skimage.feature import hog
 
 
-
 #read in image and return the histogram of gradient
 def do_hog(file_path, dim_x, dim_z, orientations, pixels_per_cell, cells_per_block):
     """
