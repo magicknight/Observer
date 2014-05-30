@@ -3,6 +3,7 @@
 import cPickle as pickle
 import numpy as np
 from get_samples import get_samples
+from sklearn import svm
 
 # from 5.29, 2014
 __author__ = 'Zhihua Liang'
@@ -27,4 +28,8 @@ test_path = '/home/zhihua/work/HOG/image/test'
 #training samples and labels
 training_sample, training_label = get_samples(training_path, dim_x, dim_z, orientations, pixels_per_cell,
                                               cells_per_block, scan_window_size)
-print training_label
+print 'Training set contains', len(training_label), 'samples'
+clf = svm.SVC()
+clf.fit(training_sample, training_label)
+with open('svm.pkl', 'wb') as fid:
+    pickle.dump(clf, fid)

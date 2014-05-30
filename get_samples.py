@@ -1,6 +1,7 @@
 from do_hog import do_hog
 from os import walk
 from os.path import join
+import numpy as np
 
 # from 5.30, 2014
 __author__ = 'Zhihua Liang'
@@ -20,8 +21,10 @@ def get_samples(sample_path, dim_x, dim_z, orientations, pixels_per_cell, cells_
     hog_x = dim_x/pixels_per_cell[0]
     hog_y = dim_z/pixels_per_cell[1]
     #loop over training image folder and get the histogram of gradient arrays
+    print 'Getting samples and labels from files...'
     for root, dirs, files in walk(sample_path):
         for file_name in files:
+            print file_name
             # get image path and lesion position
             file_path = join(root, file_name)
             lesion = bool(int(file_name.split('_')[19]))
@@ -37,7 +40,8 @@ def get_samples(sample_path, dim_x, dim_z, orientations, pixels_per_cell, cells_
             #scan window over the hog image, window size can varies
             for i in range(0, hog_y-scan_window_size[1]):
                 for j in range(0, hog_x-scan_window_size[0]):
-                    sample.append(hog[i:i+scan_window_size[1], j:j+scan_window_size[0], :])
+                    element = np.ndarray.flatten(hog[i:i+scan_window_size[1], j:j+scan_window_size[0], :])
+                    sample.append(element)
                     #if the window contains lesion
                     if i in range(lesion_y-1, lesion_y+2) and j in range(lesion_x-1, lesion_x+2):
                         label.append(1)
