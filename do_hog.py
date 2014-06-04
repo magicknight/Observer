@@ -24,7 +24,7 @@ def do_hog(file_path, dim_x, dim_z, orientations, pixels_per_cell, cells_per_blo
     """
     image = np.fromfile(file_path, dtype=np.float32)
     image = image.reshape([dim_z, dim_x])
-    fd = hog(image, orientations=orientations, pixels_per_cell=pixels_per_cell,
-                        cells_per_block=cells_per_block)
-    return fd
+    fd, fd_img = hog(image, orientations=orientations, pixels_per_cell=pixels_per_cell, cells_per_block=cells_per_block,
+                     visualise=True)
+    return fd, fd_img
 
