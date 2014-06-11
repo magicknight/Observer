@@ -1,10 +1,9 @@
 #!/usr/bin/env python
 
-import cPickle as pickle
+
 import numpy as np
 from get_samples import get_samples
-from sklearn import svm
-import os
+from get_classifier import get_classifier
 
 # from 5.29, 2014
 __author__ = 'Zhihua Liang'
@@ -22,37 +21,26 @@ orientations = 9
 pixels_per_cell = (10, 10)
 cells_per_block = (1, 1)  # not ready to change this value
 scan_window_size = (40/pixels_per_cell[0], 40/pixels_per_cell[1])  # on pixels
-svm_file = 'svm.pkl'
 out_file = 'result.txt'
-training_path = '/home/zhihua/work/HOG/image/tiny_training'
-test_path = '/home/zhihua/work/HOG/image/tiny_training'
+training_path = '/home/zhihua/work/HOG/image/training'
+test_path = '/home/zhihua/work/HOG/image/small_test'
 
 #########################################################
 # training
 #########################################################
-#load SVM if there exist trained SVM file.
-if os.path.isfile(svm_file):
-    with open(svm_file, 'rb') as fid:
-        clf = pickle.load(fid)
-#if no svm file exist, train it
-else:
-    #training samples and labels
-    print 'Training on training set'
-    training_sample, training_label, dummy = get_samples(training_path, dim_x, dim_z, orientations, pixels_per_cell,
-                                                         cells_per_block, scan_window_size)
-    print 'Training set contains', len(training_label), 'samples'
-    # training SVM and dump the trained svm to a binary file
-    clf = svm.SVC(class_weight={1: 100}, cache_size=3000)
-    clf.fit(training_sample, training_label)
-    with open(svm_file, 'wb') as fid:
-        pickle.dump(clf, fid)
+#training samples and labels
+print 'get training set'
+training_sample, training_label, dummy = get_samples(training_path, dim_x, dim_z, orientations, pixels_per_cell,
+                                                         cells_per_block, scan_window_size, print_image=False)
+print 'Training set contains', len(training_label), 'samples'
+clf = get_classifier('svm', training_sample, training_label)
 
 #########################################################
 # test
 #########################################################
 # get the samples from test folder.
 test_sample, test_label, lesion_positions = get_samples(test_path, dim_x, dim_z, orientations, pixels_per_cell,
-                                                        cells_per_block, scan_window_size)
+                                                        cells_per_block, scan_window_size, print_image=False)
 print 'Test set contains', len(test_label), 'samples'
 predict_label = clf.predict(test_sample)
 print 'Prediction-percentage-error is:', np.mean(predict_label != test_label)
