@@ -14,10 +14,24 @@ __email__ = "liangzhihua@gmail.com"
 __status__ = "Development"
 
 
-# loop over the sample folder and get samples and labels
-def get_samples(sample_path, dim_x, dim_z, orientations, pixels_per_cell, cells_per_block, scan_window_size, print_image):
+def block_shaped(arr, n_rows, n_cols):
+    """
+    Return an array of shape (n, nrows, ncols) where
+    n * nrows * ncols = arr.size
+
+    If arr is a 2D array, the returned array should look like n subblocks with
+    each subblock preserving the "physical" layout of arr.
+    """
+    h, w = arr.shape
+    return (arr.reshape(h//n_rows, n_rows, -1, n_cols)
+               .swapaxes(1, 2)
+               .reshape(-1, n_rows, n_cols))
+
+
+# loop over the sample folder and get hog samples and labels
+def get_hog_samples(sample_path, dim_x, dim_z, orientations, pixels_per_cell, cells_per_block, scan_window_size,
+                print_image, training=False):
     # set to gray image
-    plt.gray()
     #training samples and labels
     sample = []
     label = []
@@ -59,23 +73,57 @@ def get_samples(sample_path, dim_x, dim_z, orientations, pixels_per_cell, cells_
             #get the strongest direction on each point
             hog = hog.reshape([hog_y, hog_x, orientations])
             hog = hog.argmax(axis=2)
-            #scan window over the hog image, window size can varies
+            hog = hog/float(orientations-1) #scale the features between [0,1]
+            # #scan window over the hog image, window size can varies
             for i in range(0, hog_y - scan_window_size[1]):
                 for j in range(0, hog_x - scan_window_size[0]):
                     element = np.ndarray.flatten(hog[i:i + scan_window_size[1], j:j + scan_window_size[0]])
-                    sample.append(element)
+
                     #if the window contains lesion
                     if i + scan_window_size[1] / 2 in range(lesion_y - 1, lesion_y + 2) \
                             and j + scan_window_size[0] / 2 in range(lesion_x - 1, lesion_x + 2):
-                        print 'label 1 at:', (j + scan_window_size[1] / 2) * pixels_per_cell[1], \
-                            (i + scan_window_size[0] / 2) * pixels_per_cell[0]
+                        print 'label 1 at:', (j + scan_window_size[0] / 2) * pixels_per_cell[0], \
+                            (i + scan_window_size[1] / 2) * pixels_per_cell[1]
                         if print_image:
-                            hog_img[j * pixels_per_cell[1]:(j + scan_window_size[1]) * pixels_per_cell[1],
-                            i*pixels_per_cell[0]:(i + scan_window_size[0]) * pixels_per_cell[0]] += 0.02
+                            hog_img[j * pixels_per_cell[0]:(j + scan_window_size[0]) * pixels_per_cell[0],
+                                i*pixels_per_cell[1]:(i + scan_window_size[1]) * pixels_per_cell[1]] += 0.02
+                        sample.append(element)
                         label.append(1)
+                    # get rid of windows that contains part of the lesion
+                    elif i in range(int(lesion_y - 1.5*scan_window_size[1]), int(lesion_y + 0.5*scan_window_size[1])) \
+                            and j in range(int(lesion_x - 1.5*scan_window_size[0]), int(lesion_x + 0.5*scan_window_size[0])):
+                        # for training, get rid of those contain part of the lesions, try not to confuse the classifier
+                        if training:
+                            continue
+                        else:
+                            sample.append(element)
+                            label.append(0)
+                    # window that contains no lesion
                     else:
+                        sample.append(element)
                         label.append(0)
             if print_image:
+                plt.gray()
                 plt.imshow(hog_img)
-                plt.savefig(join('figs', file_name.split('.img')[0]), format='png')
+                plt.savefig(join('figs', file_name.split('.img')[0]), format='png', dpi=200)
     return np.array(sample), np.array(label), lesions
+
+
+# loop over the sample folder and get samples with a smaller window
+def get_pre_train_samples(sample_path, dim_x, dim_y, scan_window_size):
+    # set to gray image
+    #training samples and labels
+    sample = []
+    n_sub_image = [dim_x/scan_window_size[0], dim_y/scan_window_size[1]]
+    #loop over training image folder and get the histogram of gradient arrays
+    print 'Getting samples and labels from files...'
+    for root, dirs, files in walk(sample_path):
+        for file_name in files:
+            print file_name
+            # get image path and lesion position
+            file_path = join(root, file_name)
+            image = np.fromfile(file_path, dtype=np.float32).reshape([dim_y, dim_x])
+            sub_images = block_shaped(image, scan_window_size[1], scan_window_size[0])
+            [sample.append(y) for y in sub_images]
+    return np.array(sample)
+
