@@ -29,10 +29,10 @@ cells_per_block = (1, 1)  # not ready to change this value
 scan_window_size = (target_size/pixels_per_cell[0], target_size/pixels_per_cell[1])  # on pixels
 out_file = 'output/result.txt'
 training_path = '/home/zhihua/work/object_detector/image/training'
-test_path = '/home/zhihua/work/object_detector/image/1-test2'
+test_path = '/home/zhihua/work/object_detector/image/noisy_test'
 classifier_name = 'sgd'  # options are 'svm', 'sgd' for now
 classifier_file = 'SGD.pkl'
-re_train = False
+re_train = False # only sgd get the retrain
 #########################################################
 # training
 #########################################################
@@ -41,6 +41,7 @@ total_training_label = []
 if os.path.isfile(classifier_file):
     #load SVM if there exist trained SVM file.
     clf = pickle.load(classifier_file)
+    # continue train the model with new data
     if re_train:
         print 'get re-training set'
         for root, dirs, files in walk(training_path):
@@ -53,7 +54,8 @@ if os.path.isfile(classifier_file):
                 total_training_sample = total_training_sample + training_sample
                 total_training_label = total_training_label + training_label
                 print 're-Training set contains', len(total_training_label), 'samples'
-        clf.fit(total_training_sample, total_training_label)
+        clf.partial_fit(total_training_sample, total_training_label)  # WARNING: Only SGD get the
+                                                                      # online learning feature.
         pickle.dump(clf, classifier_file)
 # if no svm exist, create it and train
 else:

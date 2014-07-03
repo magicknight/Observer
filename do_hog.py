@@ -30,6 +30,6 @@ def do_hog(file_path, dim_x, dim_z, orientations, pixels_per_cell, cells_per_blo
         return fd, fd_img
     else:
         fd = hog(image, orientations=orientations, pixels_per_cell=pixels_per_cell,
-                         cells_per_block=cells_per_block, visualise=visualise)
+                 cells_per_block=cells_per_block, visualise=visualise)
         return fd
 
