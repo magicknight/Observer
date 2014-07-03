@@ -4,37 +4,44 @@ print(__doc__)
 
 # Authors: Yann N. Dauphin, Vlad Niculae, Gabriel Synnaeve
 # License: BSD
-
-import numpy as np
 import matplotlib.pyplot as plt
-
-from scipy.ndimage import convolve
+from sklearn.neural_network import BernoulliRBM
+from get_samples import get_pre_train_samples
 from sklearn import linear_model, datasets, metrics
 from sklearn.cross_validation import train_test_split
-from sklearn.neural_network import BernoulliRBM
+from get_samples import get_hog_samples
 from sklearn.pipeline import Pipeline
-
-from get_samples import get_pre_train_samples
-
 
 ###############################################################################
 # Setting up
 training_path = '/home/zhihua/work/object_detector/image/training'
+#define the parameters
+dim_x = 760
+dim_y = 195
+dim_z = 240
+orientations = 9
+target_size = 40
+pixels_per_cell = (4, 4)
+cells_per_block = (1, 1)  # not ready to change this value
+scan_window_size = (target_size/pixels_per_cell[0], target_size/pixels_per_cell[1])  # on pixels
 
-X = get_pre_train_samples(training_path, 760, 240, [40, 40])
-print('sample is in shape', X.shape)
-# Load Data
-#digits = datasets.load_digits()
-#X = np.asarray(digits.data, 'float32')
-#Y = np.asarray(digits.target, 'float32')
-X = (X - np.min(X, 0)) / (np.max(X, 0) + 0.0001)  # 0-1 scaling
+print('get training set')
+training_sample, training_label, dummy = get_hog_samples(training_path, dim_x, dim_z, orientations, pixels_per_cell,
+                                                         cells_per_block, scan_window_size, print_image=False,
+                                                         training=True)
+print('Training set contains', len(training_label), 'samples')
 
-#X_train, X_test, Y_train, Y_test = train_test_split(X, Y,
-#                                                    test_size=0.2,
-#                                                    random_state=0)
+#training_sample = get_pre_train_samples(training_path, 760, 240, [40, 40])
+# Models we will use
+X_train, X_test, Y_train, Y_test = train_test_split(training_sample, training_label,
+                                                    test_size=0.2,
+                                                    random_state=0)
 
 # Models we will use
+logistic = linear_model.LogisticRegression()
 rbm = BernoulliRBM(random_state=0, verbose=True)
+
+classifier = Pipeline(steps=[('rbm', rbm), ('logistic', logistic)])
 
 
 ###############################################################################
@@ -48,17 +55,35 @@ rbm.n_iter = 20
 # More components tend to give better prediction performance, but larger
 # fitting time
 rbm.n_components = 100
-
+logistic.C = 6000.0
 # Training RBM-Logistic Pipeline
-rbm.fit(X)
+# Training RBM-Logistic Pipeline
+classifier.fit(X_train, Y_train)
 
+# Training Logistic regression
+logistic_classifier = linear_model.LogisticRegression(C=100.0)
+logistic_classifier.fit(X_train, Y_train)
+
+###############################################################################
+# Evaluation
+
+print()
+print("Logistic regression using RBM features:\n%s\n" % (
+    metrics.classification_report(
+        Y_test,
+        classifier.predict(X_test))))
+
+print("Logistic regression using raw pixel features:\n%s\n" % (
+    metrics.classification_report(
+        Y_test,
+        logistic_classifier.predict(X_test))))
 ###############################################################################
 # Plotting
 
-plt.figure(figsize=(4.2, 4))
+plt.figure(figsize=(12.6, 12))
 for i, comp in enumerate(rbm.components_):
     plt.subplot(10, 10, i + 1)
-    plt.imshow(comp.reshape((8, 8)), cmap=plt.cm.gray_r,
+    plt.imshow(comp.reshape((10, 10)), cmap=plt.cm.gray_r,
                interpolation='nearest')
     plt.xticks(())
     plt.yticks(())
