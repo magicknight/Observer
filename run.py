@@ -2,12 +2,14 @@
 
 
 import numpy as np
-from get_samples import get_hog_samples
-from get_classifier import get_classifier
 import os
 from os import walk
+from get_samples import get_hog_samples
+from get_classifier import get_classifier
+from get_location import get_location
+from output import output
 from os.path import join
-#import cPickle as pickle
+from shutil import rmtree
 from sklearn.externals import joblib as pickle
 
 # from 5.29, 2014
@@ -27,9 +29,9 @@ target_size = 52
 pixels_per_cell = (4, 4)
 cells_per_block = (1, 1)  # not ready to change this value
 scan_window_size = (target_size/pixels_per_cell[0], target_size/pixels_per_cell[1])  # on pixels
-out_file = 'output/result.txt'
+out_path = 'result'  # output directory
 training_path = '/home/zhihua/work/object_detector/image/training'
-test_path = '/home/zhihua/work/object_detector/image/noisy_test'
+test_path = '/home/zhihua/work/object_detector/image/pa60_all'
 classifier_name = 'sgd'  # options are 'svm', 'sgd' for now
 classifier_file = 'SGD.pkl'
 re_train = False # only sgd get the retrain
@@ -79,8 +81,9 @@ else:
 #########################################################
 # test
 #########################################################
-#open out put file
-fid = open(out_file, 'w')
+#remove the previous output if there exist any
+rmtree(out_path)
+os.makedirs(out_path)
 # get the samples from test folder.
 prediction_list = np.empty([])
 for root, dirs, files in walk(test_path):
@@ -95,19 +98,27 @@ for root, dirs, files in walk(test_path):
             print 'Prediction-percentage-error is:', np.mean(predict_label != test_label)
             print np.where(np.array(test_label) == 1)
             print np.where(predict_label == 1)
+
             #go back to the original image axis
             label_x = dim_x/pixels_per_cell[0] - scan_window_size[0]
             label_y = dim_z/pixels_per_cell[1] - scan_window_size[1]
-            n_samples = len(lesion_positions)
-            predict_label = predict_label.reshape([n_samples, label_y, label_x])
-            # print output to file
-            for i in range(n_samples):
-                fid.write('=============== ' + 'Image ' + str(i) + ' =============== \n')
-                fid.write(str(lesion_positions[i]))
-                fid.write('--------------- \n')
-                y, x = np.where(predict_label[i, :, :] == 1)
-                predict_lesion_position = np.dstack((x*pixels_per_cell[0]+target_size/2.0, y*pixels_per_cell[1]+target_size/2.0))
-                prediction_list = np.append(prediction_list, predict_lesion_position)
-                fid.write('--------------- \n')
-                fid.write(str(predict_lesion_position) + '\n')
-fid.close()
+            #n_samples = len(lesion_positions)
+            predict_label = predict_label.reshape([label_y, label_x])
+            y, x = np.where(predict_label[:, :] == 1)
+            predict_lesion_position = np.dstack((x*pixels_per_cell[0]+target_size/2,
+                                                 y*pixels_per_cell[1]+target_size/2))[0]
+            print 'candidate positions are:', predict_lesion_position
+            # find the lesion location
+            if predict_lesion_position.size != 0:
+                position, confidence = get_location(predict_lesion_position, target_size)
+            else:
+                position = [-1, -1]
+                confidence = 1
+            print 'predicted location is', position, 'with confidence', confidence
+            # get the density value and projection number as output file name:
+            density = file_name.split('Pd')[-1].split('_')[0]
+            projection_number = file_name.split('tp_')[-1].split('_')[0]
+            output_file_name = 'PD_' + density + '_TP_' + projection_number + '.txt'
+            #open out put file
+            with open(join(out_path, output_file_name), 'a') as fid:
+                output(file_name, position, confidence, fid)
