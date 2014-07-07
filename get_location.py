@@ -8,16 +8,15 @@ import numpy as np
 def get_location(predict_positions, target_size):
     db = DBSCAN(eps=target_size/2, min_samples=2).fit(predict_positions)
     labels = db.labels_
-    print 'labels are', labels
+   # print 'labels are', labels
     cluster_labels = np.delete(labels, np.argwhere(labels == -1))
     if cluster_labels.size == 0:
         return [-1, -1], 1
-    print 'after deleted -1, labels are', cluster_labels
+   # print 'after deleted -1, labels are', cluster_labels
     # find cluster that has most points
     label = np.argmax(np.bincount(cluster_labels.astype(np.int64)))
-    print 'most frequency label is', label
+   # print 'most frequency label is', label
     class_members = [index[0] for index in np.argwhere(labels == label)]
-    print 'class members are', class_members
+   # print 'class members are', class_members
     positions = [predict_positions[i] for i in class_members]
-    print 'the final picked positions are:', positions
     return np.mean(positions, axis=0, dtype=np.int64), len(class_members)

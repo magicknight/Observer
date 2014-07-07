@@ -44,9 +44,8 @@ def get_hog_samples(file_path, dim_x, dim_z, orientations, pixels_per_cell, cell
     hog_x = dim_x / pixels_per_cell[0]
     hog_y = dim_z / pixels_per_cell[1]
     #loop over training image folder and get the histogram of gradient arrays
-    print 'Getting samples and labels from files...'
     file_name = file_path.split('/')[-1]
-    print file_name
+    #print file_name
     # get image path and lesion position
     lesion = bool(int(file_name.split('_lesion_')[-1].split('_')[0]))
     if lesion:
@@ -54,7 +53,7 @@ def get_hog_samples(file_path, dim_x, dim_z, orientations, pixels_per_cell, cell
         lesion_y = int(file_name.split('_z_')[-1].split('_')[0])
         # append the original position
         lesions.append([lesion_x, lesion_y])
-        print 'lesion position:', lesion_x, lesion_y
+     #   print 'lesion position:', lesion_x, lesion_y
         # calculate the lesion position in hog image for labels
         lesion_x = lesion_x / pixels_per_cell[0]
         lesion_y = lesion_y / pixels_per_cell[1]
@@ -85,8 +84,8 @@ def get_hog_samples(file_path, dim_x, dim_z, orientations, pixels_per_cell, cell
             #if the window contains lesion
             if i + scan_window_size[1] / 2 in range(lesion_y - 1, lesion_y + 2) \
                     and j + scan_window_size[0] / 2 in range(lesion_x - 1, lesion_x + 2):
-                print 'label 1 at:', (j + scan_window_size[0] / 2) * pixels_per_cell[0], \
-                    (i + scan_window_size[1] / 2) * pixels_per_cell[1]
+                #print 'label 1 at:', (j + scan_window_size[0] / 2) * pixels_per_cell[0], \
+                 #   (i + scan_window_size[1] / 2) * pixels_per_cell[1]
                 if print_image:
                     hog_img[j * pixels_per_cell[0]:(j + scan_window_size[0]) * pixels_per_cell[0],
                         i*pixels_per_cell[1]:(i + scan_window_size[1]) * pixels_per_cell[1]] += 0.02
@@ -118,8 +117,9 @@ def get_hog_samples(file_path, dim_x, dim_z, orientations, pixels_per_cell, cell
         plt.imshow(hog_img)
         plt.savefig(join('figs', file_name.split('.img')[0]), format='png', dpi=200)
     if training:
-        print 'selecting negative samples ', len(negative_samples)/10, 'totally.'
-        print 'positive samples is', len(positive_samples), 'totally.'
+       # print 'selecting negative samples ', len(negative_samples)/10, 'totally.'
+       # print 'positive samples is', len(positive_samples), 'totally.'
+        # get random data set from the whole data set.
         negative_samples = random.sample(negative_samples, len(negative_samples)/10)
         sample = negative_samples + positive_samples
         label = [0]*len(negative_samples)+[1]*len(positive_samples)
