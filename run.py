@@ -26,17 +26,17 @@ dim_x = 760
 dim_y = 195
 dim_z = 240
 orientations = 9
-target_size = 52
+target_size = 44
 pixels_per_cell = (4, 4)
 cells_per_block = (1, 1)  # not ready to change this value
 scan_window_size = (target_size/pixels_per_cell[0], target_size/pixels_per_cell[1])  # on pixels
 out_path = 'result'  # output directory
-training_path = '/home/zhihua/work/object_detector/image/25_nf_images'
-test_path = '/home/zhihua/work/object_detector/image/pa60_all'
+training_path = '/home/zhihua/work/object_detector/image/25_random'
+test_path = '/home/zhihua/work/object_detector/image/25_fix'
 classifier_name = 'sgd'  # options are 'svm', 'sgd' for now
-classifier_file = 'classifier/SGD.pkl'
+classifier_file = 'classifier/sgd.pkl'
 re_train = False # only sgd get the retrain
-online_training = True  # train on every single image when it is available.
+online_training = False  # train on every single image when it is available.
 #########################################################
 # training
 #########################################################
@@ -44,7 +44,7 @@ online_training = True  # train on every single image when it is available.
 bar = progressbar.ProgressBar(maxval=20, widgets=[progressbar.Bar('=', '[', ']'), ' ', progressbar.Percentage()])
 # get number of files in training directory
 number_of_total_files = len([name for name in os.listdir(training_path)])
-number_of_total_files_over_20 = number_of_total_files/20
+number_of_total_files_over_20 = number_of_total_files/20 + 1
 file_count = 0
 
 total_training_sample = []
@@ -145,6 +145,7 @@ for root, dirs, files in walk(test_path):
             else:
                 position = [-1, -1]
                 confidence = 1
+            confidence = confidence - 1   # get to the range of LROC analysis
             print 'predicted location is', position, 'with confidence', confidence
             lesion = int(file_name.split('lesion_')[-1].split('_')[0]) > 0
             truth_x = int(file_name.split('x_')[-1].split('_')[0])
@@ -154,9 +155,8 @@ for root, dirs, files in walk(test_path):
             else:
                 print 'truth position is    ', [-1, -1]
             # get the density value and projection number as output file name:
-            density = file_name.split('Pd')[-1].split('_')[0]
             projection_number = file_name.split('tvp_')[-1].split('_')[0]
-            output_file_name = 'PD_' + density + '_TP_' + projection_number + '.txt'
+            output_file_name = 'TP_' + projection_number + '.txt'
             #open out put file
             with open(join(out_path, output_file_name), 'a') as fid:
                 output(file_name, position, confidence, fid)
