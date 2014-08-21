@@ -26,25 +26,27 @@ dim_x = 760
 dim_y = 195
 dim_z = 240
 orientations = 9
-target_size = 44
+target_size = 48
 pixels_per_cell = (4, 4)
-cells_per_block = (1, 1)  # not ready to change this value
-scan_window_size = (target_size/pixels_per_cell[0], target_size/pixels_per_cell[1])  # on pixels
+cells_per_block = (3, 3)  # not ready to change this value
+weight_values = (1, 30)
+scan_window_size = (target_size, target_size)  # on pixels
 out_path = 'result'  # output directory
-training_path = '/home/zhihua/work/object_detector/image/25_random'
+training_path = '/home/zhihua/work/object_detector/image/25_random_cleaned'
 test_path = '/home/zhihua/work/object_detector/image/25_fix'
 classifier_name = 'sgd'  # options are 'svm', 'sgd' for now
 classifier_file = 'classifier/sgd.pkl'
 re_train = False # only sgd get the retrain
-online_training = False  # train on every single image when it is available.
+online_training = True  # train on every single image when it is available.
+verbose = False  # print debug message
 #########################################################
 # training
 #########################################################
 # get progress bar for display progress
-bar = progressbar.ProgressBar(maxval=20, widgets=[progressbar.Bar('=', '[', ']'), ' ', progressbar.Percentage()])
+bar = progressbar.ProgressBar(maxval=100, widgets=[progressbar.Bar('=', '[', ']'), ' ', progressbar.Percentage()])
 # get number of files in training directory
-number_of_total_files = len([name for name in os.listdir(training_path)])
-number_of_total_files_over_20 = number_of_total_files/20 + 1
+number_of_total_files = sum([len(files) for r, d, files in os.walk(training_path)])
+number_of_total_files_over_20 = number_of_total_files/100 + 1
 file_count = 0
 
 total_training_sample = []
@@ -60,13 +62,16 @@ if os.path.isfile(classifier_file):
                 training_sample, training_label, dummy = get_hog_samples(join(root, file_name), dim_x, dim_z,
                                                                          orientations, pixels_per_cell,
                                                                          cells_per_block, scan_window_size,
-                                                                         print_image=False,
-                                                                         training=True)
+                                                                         training=True, verbose=verbose)
                 if online_training:
+                    n_positive = np.count_nonzero(training_label)
+                    sample_weight = [weight_values[0]]*(len(training_label) - n_positive) + [weight_values[1]]*n_positive
                     if file_count == 0:
-                        clf.partial_fit(training_sample, training_label, classes=np.unique(training_label))
+                        clf.partial_fit(training_sample, training_label, classes=np.unique(training_label),
+                                        sample_weight=sample_weight)
+                        print 'training labels are', np.unique(training_label)
                     else:
-                        clf.partial_fit(training_sample, training_label)
+                        clf.partial_fit(training_sample, training_label, sample_weight=sample_weight)
                 else:
                     total_training_sample = total_training_sample + training_sample
                     total_training_label = total_training_label + training_label
@@ -83,19 +88,23 @@ else:
     #if no svm file exist, train it
     clf = get_classifier(classifier_name)
     #training samples and labels
-    print 'get training set on', training_path
+    print 'Get training set on', training_path
+    print 'Training on progress.... \n\n\n\n'
     for root, dirs, files in walk(training_path):
         for file_name in files:
             training_sample, training_label, dummy = get_hog_samples(join(root, file_name), dim_x, dim_z,
                                                                      orientations, pixels_per_cell,
                                                                      cells_per_block, scan_window_size,
-                                                                     print_image=False,
-                                                                     training=True)
+                                                                     training=True, verbose=verbose)
             if online_training:
+                n_positive = np.count_nonzero(training_label)
+                sample_weight = [weight_values[0]]*(len(training_label) - n_positive) + [weight_values[1]]*n_positive
                 if file_count == 0:
-                    clf.partial_fit(training_sample, training_label, classes=np.unique(training_label))
+                    clf.partial_fit(training_sample, training_label, classes=np.unique(training_label),
+                                    sample_weight=sample_weight)
+                    print 'training labels are', np.unique(training_label)
                 else:
-                    clf.partial_fit(training_sample, training_label)
+                    clf.partial_fit(training_sample, training_label, sample_weight=sample_weight)
             else:
                 total_training_sample = total_training_sample + training_sample
                 total_training_label = total_training_label + training_label
@@ -103,7 +112,8 @@ else:
             if file_count/number_of_total_files_over_20 == float(file_count)/float(number_of_total_files_over_20):
                 bar.update(file_count/number_of_total_files_over_20)
     if not online_training:
-        print 'Training set contains', len(total_training_label), 'samples'
+        print '\n Training set contains', len(total_training_label), 'samples'
+        print total_training_sample[0].shape
         clf.fit(total_training_sample, total_training_label)
     pickle.dump(clf, classifier_file)
 bar.finish()
@@ -122,8 +132,7 @@ for root, dirs, files in walk(test_path):
             test_sample, test_label, lesion_positions = get_hog_samples(join(root, file_name), dim_x, dim_z,
                                                                         orientations, pixels_per_cell,
                                                                         cells_per_block, scan_window_size,
-                                                                        print_image=False,
-                                                                        training=False)
+                                                                        training=False, verbose=verbose)
             print 'Test set contains', len(test_label), 'samples'
             predict_label = clf.predict(test_sample)
             print 'Prediction-percentage-error is:', np.mean(predict_label != test_label)
@@ -131,9 +140,10 @@ for root, dirs, files in walk(test_path):
             print np.where(predict_label == 1)
 
             #go back to the original image axis
-            label_x = dim_x/pixels_per_cell[0] - scan_window_size[0]
-            label_y = dim_z/pixels_per_cell[1] - scan_window_size[1]
+            label_x = (dim_x - scan_window_size[0])/pixels_per_cell[0]+1
+            label_y = (dim_z - scan_window_size[1])/pixels_per_cell[1]+1
             #n_samples = len(lesion_positions)
+            print 'label number is', label_x*label_y
             predict_label = predict_label.reshape([label_y, label_x])
             y, x = np.where(predict_label[:, :] == 1)
             predict_lesion_position = np.dstack((x*pixels_per_cell[0]+target_size/2,
@@ -145,7 +155,7 @@ for root, dirs, files in walk(test_path):
             else:
                 position = [-1, -1]
                 confidence = 1
-            confidence = confidence - 1   # get to the range of LROC analysis
+            confidence = (confidence+1)/float(2)   # get to the range of LROC analysis
             print 'predicted location is', position, 'with confidence', confidence
             lesion = int(file_name.split('lesion_')[-1].split('_')[0]) > 0
             truth_x = int(file_name.split('x_')[-1].split('_')[0])

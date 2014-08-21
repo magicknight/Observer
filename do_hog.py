@@ -11,7 +11,7 @@ from skimage.feature import hog
 
 
 #read in image and return the histogram of gradient
-def do_hog(file_path, dim_x, dim_z, orientations, pixels_per_cell, cells_per_block, visualise, normalise):
+def do_hog(file_path, dim_x, dim_z,  orientations, pixels_per_cell, cells_per_block, normalise):
     """
 
     :param file_path:
@@ -24,12 +24,7 @@ def do_hog(file_path, dim_x, dim_z, orientations, pixels_per_cell, cells_per_blo
     """
     image = np.fromfile(file_path, dtype=np.float32)
     image = image.reshape([dim_z, dim_x])
-    if visualise:
-        fd, fd_img = hog(image, orientations=orientations, pixels_per_cell=pixels_per_cell,
-                         cells_per_block=cells_per_block, visualise=visualise, normalise=normalise)
-        return fd, fd_img
-    else:
-        fd = hog(image, orientations=orientations, pixels_per_cell=pixels_per_cell,
-                 cells_per_block=cells_per_block, visualise=visualise, normalise=normalise)
-        return fd
+    fd = hog(image, orientations=orientations, pixels_per_cell=pixels_per_cell,
+             cells_per_block=cells_per_block, normalise=normalise)
+    return fd
 
