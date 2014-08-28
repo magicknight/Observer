@@ -2,10 +2,17 @@ __author__ = 'zhihua'
 
 from sklearn.cluster import DBSCAN
 import numpy as np
+import random
 
 
 # This function use DBSCAN clustering to select the center that most likely as a lesion
 def get_location(predict_positions, target_size):
+    """
+
+    :param predict_positions:
+    :param target_size:
+    :return:
+    """
     db = DBSCAN(eps=target_size/2, min_samples=2).fit(predict_positions)
     labels = db.labels_
    # print 'labels are', labels
@@ -20,3 +27,9 @@ def get_location(predict_positions, target_size):
    # print 'class members are', class_members
     positions = [predict_positions[i] for i in class_members]
     return np.mean(positions, axis=0, dtype=np.int64), len(class_members)
+
+# This function select randomly a location
+
+
+def get_location_random(predict_positions):
+    return random.sample(predict_positions, 1)[0]
