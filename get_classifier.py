@@ -21,5 +21,5 @@ def get_classifier(name):
 
     if name=='sgd':
         # training SVM and dump the trained svm to a binary file
-        clf = SGDClassifier(loss="hinge", penalty="l2")
+        clf = SGDClassifier(loss="hinge", penalty="l2", class_weight='auto')
         return clf

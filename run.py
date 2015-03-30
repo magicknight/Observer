@@ -32,8 +32,8 @@ cells_per_block = (3, 3)  # not ready to change this value
 weight_values = (1, 30)
 scan_window_size = (target_size, target_size)  # on pixels
 out_path = 'result'  # output directory
-training_path = '/home/zhihua/work/object_detector/image/25_random_cleaned'
-test_path = '/home/zhihua/work/object_detector/image/25_fix'
+training_path = '/home/zhihua/work/object_detector/image/25_50_75_0_1'
+test_path = '/home/zhihua/work/object_detector/image/25_50_75_2'
 classifier_name = 'sgd'  # options are 'svm', 'sgd' for now
 classifier_file = 'classifier/sgd.pkl'
 re_train = False # only sgd get the retrain
@@ -67,11 +67,11 @@ if os.path.isfile(classifier_file):
                     n_positive = np.count_nonzero(training_label)
                     sample_weight = [weight_values[0]]*(len(training_label) - n_positive) + [weight_values[1]]*n_positive
                     if file_count == 0:
-                        clf.partial_fit(training_sample, training_label, classes=np.unique(training_label),
-                                        sample_weight=sample_weight)
+                        clf.partial_fit(training_sample, training_label, classes=np.unique(training_label))
+                                       # sample_weight=sample_weight)
                         print 'training labels are', np.unique(training_label)
                     else:
-                        clf.partial_fit(training_sample, training_label, sample_weight=sample_weight)
+                        clf.partial_fit(training_sample, training_label)#, sample_weight=sample_weight)
                 else:
                     total_training_sample = total_training_sample + training_sample
                     total_training_label = total_training_label + training_label
@@ -100,11 +100,11 @@ else:
                 n_positive = np.count_nonzero(training_label)
                 sample_weight = [weight_values[0]]*(len(training_label) - n_positive) + [weight_values[1]]*n_positive
                 if file_count == 0:
-                    clf.partial_fit(training_sample, training_label, classes=np.unique(training_label),
-                                    sample_weight=sample_weight)
+                    clf.partial_fit(training_sample, training_label, classes=np.unique(training_label))
+                                    #sample_weight=sample_weight)
                     print 'training labels are', np.unique(training_label)
                 else:
-                    clf.partial_fit(training_sample, training_label, sample_weight=sample_weight)
+                    clf.partial_fit(training_sample, training_label)#, sample_weight=sample_weight)
             else:
                 total_training_sample = total_training_sample + training_sample
                 total_training_label = total_training_label + training_label
